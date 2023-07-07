@@ -32,13 +32,15 @@ def extract_and_load_data(con, api_key, table="weather"):
     s3_file = f"s3://weatherstocking/{file_name}.parquet"
 
     for city in stub.app.variables_dict["cities"]:
-        url = f"https://api.openweathermap.org/data/2.5/" \
+        url = (
+            f"https://api.openweathermap.org/data/2.5/"
             f"{table}?lat={city['lat']}&lon={city['lon']}&appid={api_key}"
+        )
         dump_url_to_json(url, json_file)
 
     con.execute(
-        f"create or replace table {table} as select *"\
-            f"from read_json_auto('{json_file}');"
+        f"create or replace table {table} as select *"
+        f"from read_json_auto('{json_file}');"
     )
 
     con.execute(f"copy {table} to '{s3_file}'; drop table {table};")
@@ -50,6 +52,7 @@ def extract_and_load_data(con, api_key, table="weather"):
     image=modal_image,
     schedule=modal.Cron("0 */3 * * *"),
     secret=modal.Secret.from_name("weatherstocking_secrets"),
+    retries=5,
 )
 def obtain_weather():
     duckdb_con = duckdb.connect()
